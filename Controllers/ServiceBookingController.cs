@@ -1,5 +1,4 @@
 ﻿using AutoMapper;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using VehicleServiceBookingAPI_EF.DTOs.ServiceBookings;
 using VehicleServiceBookingAPI_EF.Entity;
@@ -13,73 +12,146 @@ namespace VehicleServiceBookingAPI_EF.Controllers
     {
         private readonly IServiceBookingRepository _repository;
         private readonly IMapper _mapper;
+        private readonly ILogger<ServiceBookingController> _logger;
 
-        public ServiceBookingController(IServiceBookingRepository repository, IMapper mapper)
+        public ServiceBookingController(IServiceBookingRepository repository, IMapper mapper, ILogger<ServiceBookingController> logger)
         {
             this._repository = repository;
             this._mapper = mapper;
+            this._logger = logger;
         }
 
         [HttpPost]
         public async Task<IActionResult> CreateBooking([FromBody] CreateServiceBookingDTO createService)
         {
+            _logger.LogInformation("CreateBooking called with data: {@CreateService}", createService);
 
-            var service = _mapper.Map<ServiceBooking>(createService);
-            var result = await _repository.CreateBookingAsync(service);
-            if (result != "Success")
+            try
             {
-                return BadRequest(result);
-            }
+                var service = _mapper.Map<ServiceBooking>(createService);
+                var result = await _repository.CreateBookingAsync(service);
 
-            return Ok("Booking created successfully.");
+                if (result != "Success")
+                {
+                    _logger.LogWarning("Booking creation failed: {Result}", result);
+                    return BadRequest(result);
+                }
+
+                _logger.LogInformation("Booking created successfully for CustomerId: {CustomerId}", createService.CustomerId);
+                return Ok("Booking created successfully.");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error occurred while creating booking for CustomerId: {CustomerId}", createService.CustomerId);
+                return StatusCode(500, "Internal server error");
+            }
         }
 
         [HttpGet]
         public async Task<IActionResult> GetAllBooking()
         {
-            var bookings = await _repository.GetAllServiceBookingAsync();
-            var result = _mapper.Map<IEnumerable<ResponseServiceBookingDTO>>(bookings);
-            return Ok(result);
+            _logger.LogInformation("GetAllBooking called");
+
+            try
+            {
+                var bookings = await _repository.GetAllServiceBookingAsync();
+                var result = _mapper.Map<IEnumerable<ResponseServiceBookingDTO>>(bookings);
+
+                _logger.LogInformation("Retrieved {Count} bookings", result.Count());
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error occurred while retrieving all bookings");
+                return StatusCode(500, "Internal server error");
+            }
         }
+
         [HttpGet("{id:int}")]
         public async Task<IActionResult> GetBookingById(int id)
         {
-            var booking = await _repository.GetServiceBookingByIdAsync(id);
-            if(booking==null)
+            _logger.LogInformation("GetBookingById called with Id: {Id}", id);
+
+            try
             {
-                return NotFound("data doesnt exists");
+                var booking = await _repository.GetServiceBookingByIdAsync(id);
+                if (booking == null)
+                {
+                    _logger.LogWarning("Booking with Id {Id} not found", id);
+                    return NotFound("Data doesn't exist");
+                }
+
+                var result = _mapper.Map<ResponseServiceBookingDTO>(booking);
+                _logger.LogInformation("Booking with Id {Id} retrieved successfully", id);
+                return Ok(result);
             }
-            var result = _mapper.Map<ResponseServiceBookingDTO>(booking);
-            return Ok(result);
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error occurred while retrieving booking with Id: {Id}", id);
+                return StatusCode(500, "Internal server error");
+            }
         }
 
-        [HttpPut]
-        public async Task<IActionResult> UpdateBooking(int id , [FromBody] UpdateServiceBookingDTO updateServiceBooking)
+        [HttpPut("{id:int}")]
+        public async Task<IActionResult> UpdateBooking(int id, [FromBody] UpdateServiceBookingDTO updateServiceBooking)
         {
-            if(!ModelState.IsValid)
+            _logger.LogInformation("UpdateBooking called with Id: {Id}", id);
+
+            if (!ModelState.IsValid)
             {
+                _logger.LogWarning("Invalid model state for UpdateBooking with Id: {Id}", id);
                 return BadRequest(ModelState);
             }
-            var existingBooking = await _repository.GetServiceBookingByIdAsync(id);
-            if(existingBooking==null)
+
+            try
             {
-                return NotFound("Data doesnt exists");
+                var existingBooking = await _repository.GetServiceBookingByIdAsync(id);
+                if (existingBooking == null)
+                {
+                    _logger.LogWarning("Booking with Id {Id} not found for update", id);
+                    return NotFound("Data doesn't exist");
+                }
+
+                _mapper.Map(updateServiceBooking, existingBooking);
+                await _repository.UpdateServiceBookingAsync(existingBooking);
+
+                _logger.LogInformation("Booking with Id {Id} updated successfully", id);
+                return Ok("Service Booking Updated Successfully");
             }
-            _mapper.Map(updateServiceBooking, existingBooking);
-            await _repository.UpdateServiceBookingAsync(existingBooking);
-            return Ok("Service Booking Updated Successfully");
-        }
-        [HttpDelete]
-        public async Task<IActionResult> DeleteServiceBoking(int id)
-        {
-            var result = await _repository.GetServiceBookingByIdAsync(id);
-            if(result==null)
+            catch (Exception ex)
             {
-                return NotFound("Service Booking doesnt exists");
+                _logger.LogError(ex, "Error occurred while updating booking with Id: {Id}", id);
+                return StatusCode(500, "Internal server error");
             }
-            await _repository.DeleteServiceBooking(result);
-            return Ok("Service Booking Deleted.");
         }
 
+        [HttpDelete("{id:int}")]
+        public async Task<IActionResult> DeleteServiceBooking(int id)
+        {
+            _logger.LogInformation("DeleteServiceBooking called with Id: {Id}", id);
+
+            try
+            {
+                var booking = await _repository.GetServiceBookingByIdAsync(id);
+                if (booking == null)
+                {
+                    _logger.LogWarning("Booking with Id {Id} not found for deletion", id);
+                    return NotFound("Service Booking doesn't exist");
+                }
+
+                await _repository.DeleteServiceBooking(booking);
+
+                _logger.LogInformation("Booking with Id {Id} deleted successfully", id);
+                return Ok("Service Booking Deleted.");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error occurred while deleting booking with Id: {Id}", id);
+                return StatusCode(500, "Internal server error");
+            }
+        }
+    }
 }
-}
+
+
+
