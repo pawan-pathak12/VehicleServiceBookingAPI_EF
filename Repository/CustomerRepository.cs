@@ -1,6 +1,5 @@
 ﻿using AutoMapper;
 using Microsoft.AspNetCore.JsonPatch;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using VehicleServiceBookingAPI_EF.Data;
 using VehicleServiceBookingAPI_EF.Entity;
@@ -37,7 +36,7 @@ namespace VehicleServiceBookingAPI_EF.Repository
             return await _context.Customer.FirstOrDefaultAsync(a => a.Id == id);
         }
 
-         async Task ICustomerRepository.UpdateCustomerAsync(Customer customer)
+        async Task ICustomerRepository.UpdateCustomerAsync(Customer customer)
         {
             await _context.SaveChangesAsync();
         }
@@ -50,15 +49,15 @@ namespace VehicleServiceBookingAPI_EF.Repository
                 await _context.SaveChangesAsync();
             }
         }
-       async Task ICustomerRepository.PatchCustomerAsync(int id, JsonPatchDocument patchDoc)
+        async Task ICustomerRepository.PatchCustomerAsync(int id, JsonPatchDocument patchDoc)
         {
             var customer = await _context.Customer.FindAsync(id);
-            if(customer!=null)
+            if (customer != null)
             {
                 patchDoc.ApplyTo(customer);
                 await _context.SaveChangesAsync();
             }
-            
+
         }
     }
 }
