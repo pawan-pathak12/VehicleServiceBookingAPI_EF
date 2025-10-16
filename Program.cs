@@ -16,6 +16,10 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddAutoMapper(typeof(Program));
 
+builder.Logging.AddConsole();
+builder.Logging.AddDebug();
+builder.Logging.ClearProviders();
+
 builder.Services.AddScoped<ICustomerRepository, CustomerRepository>();
 builder.Services.AddScoped<IVechileRepository, VehicleRepository>();
 builder.Services.AddScoped<IServiceRepository, ServiceTypeRepository>();
